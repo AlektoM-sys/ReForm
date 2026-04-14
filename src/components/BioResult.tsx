@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { calcFullResult } from "../utils/bioAge";
 import type { BioAgeResult } from "../utils/bioAge";
-import { getXaiCoachResult } from "../utils/xaiPrompt";
 import { generatePdfReport } from "../utils/pdfReport";
 
 interface BioResultProps {
@@ -13,11 +12,7 @@ export const BioResult: React.FC<BioResultProps> = ({ answers, onRestart }) => {
   const chronoAge = Number(answers.chronoAge);
   const [bioAge, setBioAge] = useState(chronoAge);
   const [result, setResult] = useState<BioAgeResult | null>(null);
-  const [xai, setXai] = useState<string>("");
-  // const finalBioAge = result?.bioAge ?? chronoAge;
   const delta = Math.round((bioAge - chronoAge) * 10) / 10;
-  // Для OpenAI ключа (теперь из .env через import.meta.env)
-  const openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY || "";
 
   useEffect(() => {
     const res = calcFullResult(chronoAge, answers);
@@ -35,10 +30,6 @@ export const BioResult: React.FC<BioResultProps> = ({ answers, onRestart }) => {
     return () => clearInterval(interval);
   }, [chronoAge, answers]);
 
-  useEffect(() => {
-    if (result && openaiApiKey) getXaiCoachResult(result, chronoAge, answers, openaiApiKey).then(setXai);
-  }, [result, chronoAge, answers, openaiApiKey]);
-
   const [pdfLoading, setPdfLoading] = useState(false);
 
   async function handleDownloadPdf() {
@@ -48,7 +39,7 @@ export const BioResult: React.FC<BioResultProps> = ({ answers, onRestart }) => {
       await generatePdfReport({
         answers,
         bioAgeResult: result,
-        expertText: xai || "",
+        expertText: "",
         clientName: "Клиент"
       });
     } finally {
@@ -158,15 +149,16 @@ export const BioResult: React.FC<BioResultProps> = ({ answers, onRestart }) => {
         {/* XAI рекомендации */}
         <div style={{
           width: "100%",
-          background: "rgba(0,0,0,0.45)",
+          background: "rgba(30,220,139,0.06)",
+          border: "1px solid rgba(30,220,139,0.25)",
           borderRadius: 12,
           padding: "16px 18px",
           color: "#f5e9c6",
           fontSize: "0.97em",
           lineHeight: 1.6,
-          minHeight: 60
+          textAlign: "center"
         }}>
-          {xai || "Генерируем рекомендации..."}
+          🤖 Персональный ИИ-анализ и рекомендации придут в Telegram после нажатия кнопки ниже
         </div>
 
         {/* PDF-отчет */}

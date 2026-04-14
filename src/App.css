@@ -857,7 +857,6 @@ body, .rf-root {
 }
 
 /* --- Кнопки выбора фона и overlay --- */
-.rf-bg-variant-btn {
 
 .rf-root.rf-vertical {
   position: relative;
@@ -911,11 +910,6 @@ body, .rf-root {
 /* .rf-bg-glow и .rf-bg-gold отключены для полного отображения фонового изображения */
 .rf-bg-glow, .rf-bg-gold {
   display: none !important;
-}
-  font-size: 1.1em;
-  text-align: center;
-  max-width: 500px;
-  box-shadow: 0 2px 16px 0 #0004;
 }
 
 /* --- Мотивационная секция --- */

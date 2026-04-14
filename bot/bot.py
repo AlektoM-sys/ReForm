@@ -1,5 +1,6 @@
 import os
 import asyncio
+import aiohttp
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart
@@ -12,9 +13,36 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 FORMS_LINK = os.getenv("FORMS_LINK")
 AGENYZ_LINK = os.getenv("AGENYZ_LINK")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+
+async def get_xai_analysis(summary: str) -> str:
+    """Запрашивает ИИ-анализ у GPT-4o на основе результата теста."""
+    if not OPENAI_API_KEY:
+        return ""
+    prompt = (
+        f"Пользователь прошёл диагностику биологического возраста Re-Form Scan.\n"
+        f"Результат: {summary}\n\n"
+        f"Напиши персональный анализ (5-7 предложений) на русском языке:\n"
+        f"1. Что означает этот результат\n"
+        f"2. Главные зоны риска\n"
+        f"3. Конкретные рекомендации по восстановлению\n"
+        f"Пиши тепло, как эксперт-психолог. Без списков — сплошным текстом."
+    )
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                json={"model": "gpt-4o", "messages": [{"role": "user", "content": prompt}], "max_tokens": 500}
+            ) as resp:
+                data = await resp.json()
+                return data["choices"][0]["message"]["content"].strip()
+    except Exception:
+        return ""
 
 
 def main_keyboard() -> InlineKeyboardMarkup:
@@ -26,10 +54,9 @@ def main_keyboard() -> InlineKeyboardMarkup:
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message, command: CommandStart = None):
-    # Разбираем параметр ?start=... из приложения
     args = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else ""
 
-    # Уведомляем Марию о новом лиде
+    # Уведомляем Марию
     user = message.from_user
     user_info = f"👤 Новый пользователь: {user.full_name}"
     if user.username:
@@ -37,13 +64,11 @@ async def cmd_start(message: Message, command: CommandStart = None):
     user_info += f"\nID: {user.id}"
     if args:
         user_info += f"\n\n📊 Результат теста:\n{args}"
-
     try:
         await bot.send_message(ADMIN_ID, user_info)
     except Exception:
         pass
 
-    # Приветствие пользователю
     if args:
         welcome = (
             f"👋 Привет! Я бот психолога Марии.\n\n"
@@ -57,6 +82,18 @@ async def cmd_start(message: Message, command: CommandStart = None):
             "или узнать о клеточном питании Agenyz.\n\n"
             "Выбери, что тебя интересует:"
         )
+
+    await message.answer(welcome, reply_markup=main_keyboard(), parse_mode="HTML")
+
+    # Отправляем ИИ-анализ если есть результат теста
+    if args and OPENAI_API_KEY:
+        await message.answer("🤖 Генерирую персональный ИИ-анализ...")
+        analysis = await get_xai_analysis(args)
+        if analysis:
+            await message.answer(
+                f"🧬 <b>Персональный анализ от ИИ-коуча Re-Form:</b>\n\n{analysis}",
+                parse_mode="HTML"
+            )
 
     await message.answer(welcome, reply_markup=main_keyboard(), parse_mode="HTML")
 
